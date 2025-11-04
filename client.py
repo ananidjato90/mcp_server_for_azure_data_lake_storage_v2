@@ -66,7 +66,7 @@ def build_azure_client(settings: dict[str, str]) -> AzureOpenAI:
     )
 
 
-def parse_server_response(data: types.CallToolResult) -> str:
+def extract_text_content(data: types.CallToolResult) -> str:
     if data.isError:
         return "[Erreur] L'outil a signalé une erreur. Consultez les logs serveur."
 
@@ -76,7 +76,7 @@ def parse_server_response(data: types.CallToolResult) -> str:
             if isinstance(block, types.TextContent):
                 lines.append(block.text)
 
-    return "\n".join(lines) if lines else "(aucun résultat)"
+    return "\n".join(lines) if lines else "(empty)"
 
 
 def sanitize_model_output(raw: str) -> str:
@@ -205,6 +205,29 @@ def extract_model_output(response: Any) -> str:
     raise RuntimeError("Impossible d'extraire la réponse du modèle Azure OpenAI.")
 
 
+async def count_directory_items(
+    session: ClientSession,
+    container: Optional[str],
+    path: str,
+) -> tuple[int, int]:
+    args: Dict[str, Any] = {"path": path}
+    if container:
+        args["container"] = container
+
+    result = await session.call_tool("list_files", args)
+    text = extract_text_content(result)
+    if text.startswith("[Erreur]"):
+        raise RuntimeError(text)
+
+    if text.strip() in {"(empty)", ""}:
+        return 0, 0
+
+    items = [line.strip() for line in text.splitlines() if line.strip()]
+    dir_count = sum(1 for line in items if line.endswith("/"))
+    file_count = len(items) - dir_count
+    return dir_count, file_count
+
+
 async def run_mcp_query(query: str) -> str:
     settings = load_settings()
     client = build_azure_client(settings)
@@ -233,7 +256,39 @@ async def run_mcp_query(query: str) -> str:
         async with ClientSession(read_stream, write_stream) as session:
             await session.initialize()
             result = await session.call_tool("list_files", tool_arguments)
-            return parse_server_response(result)
+            base_text = extract_text_content(result)
+            if base_text.startswith("[Erreur]"):
+                return base_text
+
+            entries = [line.strip() for line in base_text.splitlines() if line.strip()]
+            if not entries:
+                return "(empty)"
+
+            container_name = tool_arguments.get("container")
+            formatted: list[str] = []
+
+            for entry in entries:
+                is_directory = entry.endswith("/")
+                normalized = entry.rstrip("/")
+                display_name = normalized.split("/")[-1]
+
+                if is_directory:
+                    try:
+                        dir_count, file_count = await count_directory_items(
+                            session,
+                            container_name,
+                            normalized,
+                        )
+                        formatted.append(
+                            f"{display_name}/ - {dir_count} dossier{'s' if dir_count != 1 else ''}, "
+                            f"{file_count} fichier{'s' if file_count != 1 else ''}"
+                        )
+                    except RuntimeError as exc:
+                        formatted.append(f"{display_name}/ - {exc}")
+                else:
+                    formatted.append(display_name)
+
+            return "\n".join(formatted)
 
 
 async def main(query: str) -> None:
