@@ -67,7 +67,13 @@ Déclarer ce serveur dans votre client MCP favori (Cursor, VSCode, etc.) en poin
 Un script `client.py` pilote le serveur MCP via le modèle Azure OpenAI `gpt-4.1-mini` :
 
 ```bash
-python client.py "Montre-moi les fichiers du dossier /data/raw"
+python client.py "liste les fichiers dans le conteneur racine"
+```
+
+ou
+
+```bash
+python client.py "Montre-moi les fichiers du dossier power_bi/data"
 ```
 
 Le client :
