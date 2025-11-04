@@ -6,6 +6,7 @@ import os
 from typing import List
 
 from azure.core.credentials import AzureNamedKeyCredential
+from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 from azure.storage.filedatalake import DataLakeServiceClient
 
 from dotenv import load_dotenv
@@ -55,10 +56,18 @@ async def list_files(container: str | None = None, path: str = "/") -> str:
     client = _get_service_client()
     filesystem = client.get_file_system_client(filesystem_name)
 
-    entries: List[str] = []
-    for item in filesystem.get_paths(path=path):
-        suffix = "/" if item.is_directory else ""
-        entries.append(f"{item.name}{suffix}")
+    try:
+        entries: List[str] = []
+        for item in filesystem.get_paths(path=path):
+            suffix = "/" if item.is_directory else ""
+            entries.append(f"{item.name}{suffix}")
+    except ResourceNotFoundError:
+        return (
+            f"[Erreur] Le filesystem '{filesystem_name}' est introuvable ou vous ne disposez pas des autorisations nécessaires."
+        )
+    except HttpResponseError as exc:
+        message = getattr(exc, "message", None) or str(exc)
+        return f"[Erreur] Impossible de lister le chemin '{path}': {message}"
 
     return "\n".join(entries) if entries else "(empty)"
 
