@@ -77,4 +77,5 @@ def describe_resource() -> str:
 
 
 if __name__ == "__main__":
+    print("[ADLS MCP] Serveur démarré. En attente de connexions MCP...")
     server.run()
