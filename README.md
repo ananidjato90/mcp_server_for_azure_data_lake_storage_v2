@@ -5,8 +5,14 @@ Ce dépôt contient un serveur MCP minimal permettant de parcourir un conteneur 
 ## Prérequis
 
 - Python 3.10+
-- Compte Azure Data Lake Storage Gen2 avec accès en lecture
-- Authentification configurée pour `DefaultAzureCredential` (variables `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`, Managed Identity, Azure CLI, etc.)
+- Compte Azure Data Lake Storage Gen2 avec clé d'accès
+- Fichier `.env` contenant :
+
+  ```env
+  AZURE_STORAGE_ACCOUNT_NAME=<nom-du-compte>
+  AZURE_STORAGE_ACCOUNT_KEY=<cle-d-acces>
+  AZURE_STORAGE_FILESYSTEM_NAME=<filesystem-ou-conteneur>
+  ```
 
 ## Installation
 
@@ -20,14 +26,10 @@ Ce dépôt contient un serveur MCP minimal permettant de parcourir un conteneur 
    Si vous n'utilisez pas de fichier `requirements.txt`, installez directement :
 
    ```bash
-   pip install mcp azure-identity azure-storage-file-datalake
+   pip install mcp azure-storage-file-datalake python-dotenv
    ```
 
-3. Exporter l'URL du compte ADLS Gen2 (point de terminaison `dfs`), par exemple :
-
-   ```bash
-   export ADLS_ACCOUNT_URL="https://<nom-compte>.dfs.core.windows.net"
-   ```
+3. Vérifier que le fichier `.env` est présent à la racine du projet avec les variables citées plus haut.
 
 ## Démarrage du serveur
 
@@ -39,7 +41,7 @@ python server.py
 
 Le serveur expose une action `list_files` qui accepte :
 
-- `container` (obligatoire) : nom du conteneur ou file system ADLS Gen2
+- `container` (optionnel) : nom du conteneur/file system à interroger. Si absent, la valeur de `AZURE_STORAGE_FILESYSTEM_NAME` est utilisée.
 - `path` (optionnel) : chemin à parcourir, `/` par défaut
 
 La réponse contient la liste des éléments trouvés, chaque dossier étant suffixé par `/`. Un chemin vide renvoie `(empty)`.
@@ -50,6 +52,6 @@ Déclarer ce serveur dans votre client MCP favori (Cursor, VSCode, etc.) en poin
 
 ## Dépannage
 
-- Vérifier que l'authentification Azure fonctionne (`az login`, variables d'environnement, Managed Identity…).
-- Contrôler la valeur de `ADLS_ACCOUNT_URL` et le nom du conteneur passé à l'action.
-- Activer la journalisation Azure Storage côté service si besoin d'un diagnostic plus fin.
+- Contrôler la présence et la validité des variables dans le fichier `.env`.
+- Vérifier que la clé d'accès fournie correspond au compte ADLS ciblé.
+- S'assurer que le filesystem renseigné existe et que votre clé dispose des droits en lecture.
