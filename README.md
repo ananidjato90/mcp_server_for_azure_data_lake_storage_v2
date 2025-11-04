@@ -12,6 +12,12 @@ Ce dépôt contient un serveur MCP minimal permettant de parcourir un conteneur 
   AZURE_STORAGE_ACCOUNT_NAME=<nom-du-compte>
   AZURE_STORAGE_ACCOUNT_KEY=<cle-d-acces>
   AZURE_STORAGE_FILESYSTEM_NAME=<filesystem-ou-conteneur>
+  AZURE_OPENAI_API_KEY=<cle-azure-openai>
+  AZURE_ENDPOINT=<https://mon-instance.openai.azure.com>
+  AZURE_VERSION=<version-api-openai>
+  # Optionnel :
+  AZURE_OPENAI_DEPLOYMENT=gpt-4.1-mini
+  PYTHON_EXECUTABLE=python3
   ```
 
 ## Installation
@@ -55,3 +61,19 @@ Déclarer ce serveur dans votre client MCP favori (Cursor, VSCode, etc.) en poin
 - Contrôler la présence et la validité des variables dans le fichier `.env`.
 - Vérifier que la clé d'accès fournie correspond au compte ADLS ciblé.
 - S'assurer que le filesystem renseigné existe et que votre clé dispose des droits en lecture.
+
+## Client en langage naturel (Azure OpenAI)
+
+Un script `client.py` pilote le serveur MCP via le modèle Azure OpenAI `gpt-4.1-mini` :
+
+```bash
+python client.py "Montre-moi les fichiers du dossier /data/raw"
+```
+
+Le client :
+
+- Convertit la requête en JSON `container/path` grâce à Azure OpenAI.
+- Démarre le serveur MCP en STDIO (commande `python3 server.py` par défaut).
+- Appelle l'outil `list_files` et affiche la réponse.
+
+Assurez-vous que les variables Azure OpenAI sont présentes dans `.env` et que le déploiement `gpt-4.1-mini` existe sur votre ressource Azure OpenAI (sinon fournissez `AZURE_OPENAI_DEPLOYMENT`).
