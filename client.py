@@ -88,6 +88,52 @@ def to_tool_arguments(model_output: str) -> Dict[str, Any]:
     return arguments
 
 
+def extract_model_output(response: Any) -> str:
+    """Extract plain text output from the Azure OpenAI response payload."""
+
+    text = getattr(response, "output_text", None)
+    if text:
+        return text
+
+    candidates = getattr(response, "output", None)
+    if candidates:
+        for candidate in candidates:
+            content = getattr(candidate, "content", None)
+            if not content and isinstance(candidate, dict):
+                content = candidate.get("content")
+            if not content:
+                continue
+            for block in content:
+                block_text = getattr(block, "text", None)
+                if not block_text and isinstance(block, dict):
+                    block_text = block.get("text")
+                if block_text:
+                    return block_text
+
+    choices = getattr(response, "choices", None)
+    if choices:
+        for choice in choices:
+            message = getattr(choice, "message", None)
+            if not message and isinstance(choice, dict):
+                message = choice.get("message")
+            if not message:
+                continue
+            content = getattr(message, "content", None)
+            if not content and isinstance(message, dict):
+                content = message.get("content")
+            if isinstance(content, str) and content:
+                return content
+            if isinstance(content, list):
+                for block in content:
+                    block_text = getattr(block, "text", None)
+                    if not block_text and isinstance(block, dict):
+                        block_text = block.get("text")
+                    if block_text:
+                        return block_text
+
+    raise RuntimeError("Impossible d'extraire la réponse du modèle Azure OpenAI.")
+
+
 async def run_mcp_query(query: str) -> str:
     settings = load_settings()
     client = build_azure_client(settings)
@@ -97,11 +143,20 @@ async def run_mcp_query(query: str) -> str:
         input=[
             {"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT}]},
             {"role": "user", "content": [{"type": "text", "text": query}]},
+            {
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Réponds uniquement avec un JSON valide contenant les clés 'container' et 'path'.",
+                    }
+                ],
+            },
         ],
-        response_format={"type": "json_object"},
     )
 
-    tool_arguments = to_tool_arguments(response.output_text)
+    model_output = extract_model_output(response)
+    tool_arguments = to_tool_arguments(model_output)
 
     server_params = StdioServerParameters(
         command=settings["python_exec"],
@@ -123,7 +178,9 @@ async def main(query: str) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Client MCP propulsé par Azure OpenAI")
-    parser.add_argument("query", help="Requête en langage naturel pour explorer ADLS Gen2")
+    parser.add_argument("query", nargs="?", help="Requête en langage naturel pour explorer ADLS Gen2")
     args = parser.parse_args()
 
-    asyncio.run(main(args.query))
+    user_query = args.query or input("Entrez votre requête pour ADLS Gen2 : ")
+
+    asyncio.run(main(user_query))
