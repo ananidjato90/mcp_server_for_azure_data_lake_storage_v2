@@ -1,6 +1,6 @@
 # MCP Server – Azure Data Lake Storage Gen2
 
-Ce dépôt contient un serveur MCP minimal permettant de parcourir un conteneur Azure Data Lake Storage Gen2 grâce à l'action `list_files`.
+Ce dépôt contient un serveur MCP minimal permettant de parcourir un conteneur Azure Data Lake Storage Gen2 grâce à l'outil MCP `list_files`.
 
 ## Prérequis
 
@@ -39,7 +39,7 @@ Lancer simplement :
 python server.py
 ```
 
-Le serveur expose une action `list_files` qui accepte :
+Le serveur expose un outil `list_files` qui accepte :
 
 - `container` (optionnel) : nom du conteneur/file system à interroger. Si absent, la valeur de `AZURE_STORAGE_FILESYSTEM_NAME` est utilisée.
 - `path` (optionnel) : chemin à parcourir, `/` par défaut
@@ -48,7 +48,7 @@ La réponse contient la liste des éléments trouvés, chaque dossier étant suf
 
 ## Intégration dans un client MCP
 
-Déclarer ce serveur dans votre client MCP favori (Cursor, VSCode, etc.) en pointant vers la commande `python server.py`. Le client découvrira automatiquement la ressource `urn:azure:adlsgen2:list` et pourra appeler l'action `list_files` pour explorer les conteneurs.
+Déclarer ce serveur dans votre client MCP favori (Cursor, VSCode, etc.) en pointant vers la commande `python server.py`. Le client découvrira automatiquement la ressource `urn:azure:adlsgen2:list` et pourra appeler l'outil `list_files` pour explorer les conteneurs.
 
 ## Dépannage
 

@@ -8,9 +8,9 @@ from typing import List
 from azure.core.credentials import AzureNamedKeyCredential
 from azure.storage.filedatalake import DataLakeServiceClient
 
-from mcp.server import MCPServer, Message, Resource
-
 from dotenv import load_dotenv
+
+from mcp.server.fastmcp import FastMCP
 
 
 load_dotenv()
@@ -21,7 +21,7 @@ ACCOUNT_KEY_ENV = "AZURE_STORAGE_ACCOUNT_KEY"
 FILESYSTEM_ENV = "AZURE_STORAGE_FILESYSTEM_NAME"
 
 
-server = MCPServer("adls-gen2")
+server = FastMCP(name="adls-gen2", instructions="Parcourir un conteneur Azure Data Lake Storage Gen2")
 
 
 def _get_service_client() -> DataLakeServiceClient:
@@ -38,8 +38,12 @@ def _get_service_client() -> DataLakeServiceClient:
     return DataLakeServiceClient(account_url=account_url, credential=credential)
 
 
-@server.action("list_files")
-async def list_files(container: str | None = None, path: str = "/") -> Message:
+@server.tool(
+    name="list_files",
+    title="Lister les fichiers ADLS Gen2",
+    description="Affiche le contenu d'un filesystem ADLS Gen2 pour un chemin donné."
+)
+async def list_files(container: str | None = None, path: str = "/") -> str:
     """List files within a filesystem/path in Azure Data Lake Storage Gen2."""
 
     filesystem_name = container or os.environ.get(FILESYSTEM_ENV)
@@ -56,21 +60,20 @@ async def list_files(container: str | None = None, path: str = "/") -> Message:
         suffix = "/" if item.is_directory else ""
         entries.append(f"{item.name}{suffix}")
 
-    content = "\n".join(entries) if entries else "(empty)"
-    return Message(content=content)
+    return "\n".join(entries) if entries else "(empty)"
 
 
-@server.list_resources
-async def resources() -> List[Resource]:
-    """Describe available resources for the MCP host."""
-
-    return [
-        Resource(
-            urn="urn:azure:adlsgen2:list",
-            name="ADLS Gen2 file listing",
-            description="Expose le contenu d'un conteneur ADLS Gen2 via l'action list_files.",
-        )
-    ]
+@server.resource(
+    "urn:azure:adlsgen2:list",
+    name="ADLS Gen2 file listing",
+    title="Contenu d'un filesystem ADLS Gen2",
+    description="Utiliser l'outil list_files pour parcourir le filesystem configuré."
+)
+def describe_resource() -> str:
+    return (
+        "Utilisez l'outil `list_files` avec les paramètres optionnels `container` et `path` "
+        "pour énumérer le contenu du compte Azure Data Lake Storage Gen2."
+    )
 
 
 if __name__ == "__main__":
